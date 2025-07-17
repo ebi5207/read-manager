@@ -1,0 +1,692 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>読書管理アプリ</title>
+    <style>
+        /* CSSは変更ありませんが、見やすさのために折りたたんでいます */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+            -webkit-overflow-scrolling: touch;
+        }
+        .container {
+            max-width: 800px; /* PC表示時の最大幅を設定 */
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            min-height: 100vh;
+            padding: 0 0 80px 0;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0;
+            font-weight: 700;
+        }
+        .tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 69px; /* ヘッダーの高さに合わせて調整 */
+            z-index: 99;
+        }
+        .tab {
+            flex: 1; padding: 12px 8px; background: none; border: none; cursor: pointer;
+            font-size: 14px; font-weight: 600; color: #64748b; transition: all 0.3s ease;
+            position: relative; text-align: center;
+        }
+        .tab:hover { color: #667eea; background: rgba(102, 126, 234, 0.1); }
+        .tab.active { color: #667eea; }
+        .tab.active::after {
+            content: ''; position: absolute; bottom: 0; left: 0;
+            right: 0; height: 2px; background: #667eea;
+        }
+        .tab-content { display: none; padding: 20px; animation: fadeIn 0.3s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .form-group { margin-bottom: 16px; }
+        label {
+            display: block; margin-bottom: 6px; font-weight: 600;
+            color: #4a5568; font-size: 14px;
+        }
+        input, textarea, select {
+            width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px;
+            font-size: 16px; transition: all 0.3s ease; background: white; -webkit-appearance: none;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;
+            padding: 14px 20px; border: none; border-radius: 8px; font-size: 16px;
+            font-weight: 600; cursor: pointer; transition: all 0.3s ease;
+            width: 100%; margin-top: 10px; touch-action: manipulation;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+        .btn:active { transform: translateY(0); }
+        .filters { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; }
+        .filter-group label { font-size: 13px; margin-bottom: 4px; }
+        .filter-group select { padding: 10px; font-size: 14px; }
+        .book-grid { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
+        .book-card {
+            background: white; border-radius: 12px; padding: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+        }
+        .book-card:active { transform: scale(0.98); }
+        .book-header { display: flex; gap: 12px; margin-bottom: 12px; }
+        .book-cover {
+            width: 60px; height: 80px;
+            background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+            border-radius: 6px; display: flex; align-items: center; justify-content: center;
+            font-size: 24px; color: #666; overflow: hidden; flex-shrink: 0;
+        }
+        .book-cover img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+        .book-info { flex: 1; min-width: 0; }
+        .book-title {
+            font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 4px; line-height: 1.3;
+            overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+            -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+        .book-author { color: #64748b; font-size: 13px; margin-bottom: 8px; }
+        .book-status {
+            display: inline-block; padding: 3px 8px; border-radius: 12px;
+            font-size: 11px; font-weight: 600; text-transform: uppercase;
+        }
+        .status-reading { background: #fef3c7; color: #92400e; }
+        .status-completed { background: #d1fae5; color: #065f46; }
+        .status-unread { background: #fee2e2; color: #991b1b; }
+        .book-dates { font-size: 12px; color: #64748b; margin-top: 8px; }
+        .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+        .tag {
+            background: #667eea; color: white; padding: 2px 6px;
+            border-radius: 10px; font-size: 10px; font-weight: 500;
+        }
+        .progress-bar {
+            width: 100%; height: 6px; background: #e2e8f0;
+            border-radius: 3px; margin: 10px 0; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px; transition: width 0.5s ease;
+        }
+        .progress-text { font-size: 11px; color: #64748b; margin-top: 4px; }
+        .book-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .btn-small { padding: 8px 12px; font-size: 12px; border-radius: 6px; flex: 1; }
+        .btn-outline { background: transparent; color: #667eea; border: 1px solid #667eea; }
+        .btn-outline:hover { background: #667eea; color: white; }
+        .notes-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+        .notes-text { font-size: 13px; color: #4a5568; line-height: 1.5; white-space: pre-wrap; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #64748b; }
+        .empty-state h3 { font-size: 18px; margin-bottom: 8px; }
+        .empty-state p { font-size: 14px; }
+        .image-preview {
+            width: 80px; height: 120px; border: 2px dashed #e2e8f0; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center; margin-top: 8px;
+            overflow: hidden; font-size: 12px; color: #64748b;
+        }
+        .image-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .stats {
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 12px; margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white; padding: 16px; border-radius: 12px; text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;
+        }
+        .stat-number { font-size: 1.8rem; font-weight: 700; color: #667eea; margin-bottom: 4px; }
+        .stat-label { color: #64748b; font-size: 12px; font-weight: 600; }
+        .tag-input-container { position: relative; }
+        .tag-input { padding-right: 60px; }
+        .tag-add-btn {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            background: #667eea; color: white; border: none; padding: 4px 8px;
+            border-radius: 4px; font-size: 12px; cursor: pointer;
+        }
+        .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .tag-item {
+            background: #667eea; color: white; padding: 4px 8px; border-radius: 12px;
+            font-size: 12px; display: flex; align-items: center; gap: 4px;
+        }
+        .tag-remove {
+            background: none; border: none; color: white; cursor: pointer;
+            font-size: 14px; padding: 0; line-height: 1;
+        }
+        .date-row { display: flex; gap: 12px; }
+        .date-row .form-group { flex: 1; }
+        @supports (-webkit-touch-callout: none) {
+            input[type="date"] { -webkit-appearance: none; background: white; }
+        }
+        .tab-content { -webkit-overflow-scrolling: touch; }
+        button, .btn { -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1); }
+        @media (max-width: 375px) {
+            .container { padding: 0 0 60px 0; }
+            .header { padding: 20px 15px 15px 15px;}
+            .tabs { top: 64px; }
+            .tab-content { padding: 16px; }
+            .book-card { padding: 12px; }
+            .stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .stat-card { padding: 12px; }
+            .stat-number { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>読書管理</h1>
+        </header>
+        
+        <div class="tabs">
+            <button class="tab active" data-tab="dashboard">概要</button>
+            <button class="tab" data-tab="add">追加・編集</button>
+            <button class="tab" data-tab="list">一覧</button>
+        </div>
+
+        <main>
+            <div id="dashboard" class="tab-content active">
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalBooks">0</div>
+                        <div class="stat-label">登録済み</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="completedBooks">0</div>
+                        <div class="stat-label">読了済み</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="readingBooks">0</div>
+                        <div class="stat-label">読書中</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="averageProgress">0%</div>
+                        <div class="stat-label">平均進捗</div>
+                    </div>
+                </div>
+
+                <h3>最近追加した本</h3>
+                <div id="recentBooks" class="book-grid"></div>
+            </div>
+
+            <div id="add" class="tab-content">
+                <h2 id="form-title">新しい本を追加</h2>
+                <form id="bookForm">
+                    <input type="hidden" id="bookId">
+                    <div class="form-group">
+                        <label for="title">タイトル *</label>
+                        <input type="text" id="title" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="author">著者 *</label>
+                        <input type="text" id="author" required>
+                    </div>
+                    
+                    <div class="date-row">
+                        <div class="form-group">
+                            <label for="totalPages">総ページ数</label>
+                            <input type="number" id="totalPages" min="1" placeholder="例: 300">
+                        </div>
+                        <div class="form-group">
+                            <label for="currentPage">現在のページ</label>
+                            <input type="number" id="currentPage" min="0" value="0">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="status">読書状況</label>
+                        <select id="status">
+                            <option value="unread">未読</option>
+                            <option value="reading">読書中</option>
+                            <option value="completed">読了</option>
+                        </select>
+                    </div>
+
+                    <div class="date-row">
+                        <div class="form-group">
+                            <label for="startDate">読書開始日</label>
+                            <input type="date" id="startDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="endDate">読了日</label>
+                            <input type="date" id="endDate">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tagInput">タグ</label>
+                        <div class="tag-input-container">
+                            <input type="text" id="tagInput" placeholder="タグを入力してEnter" class="tag-input">
+                            <button type="button" class="tag-add-btn" id="addTagBtn">追加</button>
+                        </div>
+                        <div id="tagList" class="tag-list"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="coverImage">表紙画像</label>
+                        <input type="file" id="coverImage" accept="image/*">
+                        <div class="image-preview" id="imagePreview">プレビュー</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes">メモ・感想</label>
+                        <textarea id="notes" placeholder="この本について感じたことや印象に残った部分を記録しましょう..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn" id="formSubmitBtn">本を追加</button>
+                </form>
+            </div>
+
+            <div id="list" class="tab-content">
+                <h2>本の一覧</h2>
+                
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="statusFilter">状況で絞り込み</label>
+                        <select id="statusFilter">
+                            <option value="all">すべて</option>
+                            <option value="unread">未読</option>
+                            <option value="reading">読書中</option>
+                            <option value="completed">読了</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="sortBy">並び順</label>
+                        <select id="sortBy">
+                            <option value="newest">新しい順</option>
+                            <option value="oldest">古い順</option>
+                            <option value="title">タイトル順</option>
+                            <option value="author">著者順</option>
+                            <option value="progress">進捗順</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="bookList" class="book-grid"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let books = [];
+            let currentTags = [];
+
+            const APP_PREFIX = 'bookApp_';
+            const BOOKS_STORAGE_KEY = `${APP_PREFIX}books`;
+
+            // DOM要素の取得
+            const mainElement = document.querySelector('main');
+            const tabButtons = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            const bookForm = document.getElementById('bookForm');
+            const formTitle = document.getElementById('form-title');
+            const formSubmitBtn = document.getElementById('formSubmitBtn');
+            const bookIdInput = document.getElementById('bookId');
+            const imagePreview = document.getElementById('imagePreview');
+            const coverImageInput = document.getElementById('coverImage');
+            const tagInput = document.getElementById('tagInput');
+            const tagList = document.getElementById('tagList');
+            const addTagBtn = document.getElementById('addTagBtn');
+            const statusFilter = document.getElementById('statusFilter');
+            const sortBy = document.getElementById('sortBy');
+
+            // --- データ永続化 ---
+            function saveBooks() {
+                localStorage.setItem(BOOKS_STORAGE_KEY, JSON.stringify(books));
+            }
+
+            function loadBooks() {
+                const storedBooks = localStorage.getItem(BOOKS_STORAGE_KEY);
+                if (storedBooks) {
+                    books = JSON.parse(storedBooks);
+                } else {
+                    books = [{
+                        id: 1, title: "サンプル: 走れメロス", author: "太宰治", totalPages: 50, currentPage: 25, status: "reading",
+                        startDate: "2025-01-01", endDate: null, tags: ["小説", "友情"], notes: "感動的な物語。",
+                        coverImage: null, dateAdded: new Date('2025-01-15T12:00:00Z').toISOString()
+                    }];
+                    saveBooks();
+                }
+            }
+            
+            // --- タブ切り替え ---
+            function showTab(tabName) {
+                tabContents.forEach(content => content.classList.remove('active'));
+                tabButtons.forEach(tab => tab.classList.remove('active'));
+                
+                document.getElementById(tabName).classList.add('active');
+                document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
+
+                if (tabName === 'list') {
+                    displayBooks();
+                } else if (tabName === 'dashboard') {
+                    updateAllDisplays();
+                } else if (tabName === 'add') {
+                     // フォームが「追加」モードのときだけリセットする
+                    if (formTitle.textContent.includes('新しい本')) {
+                        resetForm();
+                    }
+                }
+            }
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', (e) => showTab(e.target.dataset.tab));
+            });
+
+            // --- 表示更新 ---
+            function updateAllDisplays() {
+                displayBooks();
+                displayRecentBooks();
+                updateStats();
+            }
+
+            function updateStats() {
+                const total = books.length;
+                const completed = books.filter(b => b.status === 'completed').length;
+                const reading = books.filter(b => b.status === 'reading').length;
+                
+                let totalProgress = 0;
+                const booksWithPages = books.filter(b => b.totalPages > 0);
+                
+                if (booksWithPages.length > 0) {
+                    totalProgress = booksWithPages.reduce((sum, book) => sum + (book.currentPage / book.totalPages), 0);
+                    document.getElementById('averageProgress').textContent = Math.round((totalProgress / booksWithPages.length) * 100) + '%';
+                } else {
+                    document.getElementById('averageProgress').textContent = '0%';
+                }
+                
+                document.getElementById('totalBooks').textContent = total;
+                document.getElementById('completedBooks').textContent = completed;
+                document.getElementById('readingBooks').textContent = reading;
+            }
+
+            function displayRecentBooks() {
+                const recentBooks = [...books].sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded)).slice(0, 3);
+                const container = document.getElementById('recentBooks');
+                container.innerHTML = '';
+                if (recentBooks.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><h3>まだ本が登録されていません</h3><p>「追加・編集」タブから最初の本を登録してみましょう</p></div>';
+                    return;
+                }
+                recentBooks.forEach(book => container.innerHTML += createBookCard(book));
+            }
+
+            function displayBooks() {
+                const filterValue = statusFilter.value;
+                const sortValue = sortBy.value;
+                
+                let filteredBooks = books.filter(book => filterValue === 'all' || book.status === filterValue);
+                
+                filteredBooks.sort((a, b) => {
+                    switch (sortValue) {
+                        case 'newest': return new Date(b.dateAdded) - new Date(a.dateAdded);
+                        case 'oldest': return new Date(a.dateAdded) - new Date(b.dateAdded);
+                        case 'title': return a.title.localeCompare(b.title, 'ja');
+                        case 'author': return a.author.localeCompare(b.author, 'ja');
+                        case 'progress':
+                            const progressA = a.totalPages ? (a.currentPage / a.totalPages) : 0;
+                            const progressB = b.totalPages ? (b.currentPage / b.totalPages) : 0;
+                            return progressB - progressA;
+                        default: return 0;
+                    }
+                });
+                
+                const container = document.getElementById('bookList');
+                container.innerHTML = '';
+                if (filteredBooks.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><h3>本が見つかりませんでした</h3><p>条件を変更して再度お試しください</p></div>';
+                    return;
+                }
+                filteredBooks.forEach(book => container.innerHTML += createBookCard(book));
+            }
+
+            // --- 本のカード生成 ---
+            function createBookCard(book) {
+                const progress = book.totalPages > 0 ? Math.round((book.currentPage / book.totalPages) * 100) : 0;
+                const statusMap = { unread: '未読', reading: '読書中', completed: '読了' };
+
+                let dateInfo = '';
+                if (book.startDate) {
+                    dateInfo = `開始: ${new Date(book.startDate).toLocaleDateString('ja-JP')}`;
+                    if (book.endDate) dateInfo += ` → 完了: ${new Date(book.endDate).toLocaleDateString('ja-JP')}`;
+                }
+
+                const tagsHtml = book.tags && book.tags.length > 0
+                    ? `<div class="tags">${book.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : '';
+                
+                const coverHtml = book.coverImage ? `<img src="${book.coverImage}" alt="${book.title}">` : '??';
+                
+                const notesHtml = book.notes ? book.notes.replace(/\n/g, '<br>') : '';
+                
+                return `
+                    <div class="book-card" data-id="${book.id}">
+                        <div class="book-header">
+                            <div class="book-cover">${coverHtml}</div>
+                            <div class="book-info">
+                                <div class="book-title">${book.title}</div>
+                                <div class="book-author">著者: ${book.author}</div>
+                                <div class="book-status status-${book.status}">${statusMap[book.status]}</div>
+                                ${dateInfo ? `<div class="book-dates">${dateInfo}</div>` : ''}
+                            </div>
+                        </div>
+                        ${tagsHtml}
+                        ${book.totalPages > 0 ? `
+                            <div class="progress-bar"><div class="progress-fill" style="width: ${progress}%"></div></div>
+                            <div class="progress-text">${book.currentPage} / ${book.totalPages} ページ (${progress}%)</div>
+                        ` : ''}
+                        ${notesHtml ? `<div class="notes-section"><div class="notes-text">${notesHtml}</div></div>` : ''}
+                        <div class="book-actions">
+                            <button class="btn btn-small edit-btn">編集</button>
+                            <button class="btn btn-small btn-outline delete-btn">削除</button>
+                            ${book.status === 'reading' ? `<button class="btn btn-small progress-btn">進捗更新</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // --- イベントリスナー (概要と一覧タブのカード操作をここで一括処理) ---
+            mainElement.addEventListener('click', e => {
+                const card = e.target.closest('.book-card');
+                if (!card) return;
+                const id = Number(card.dataset.id);
+
+                if (e.target.classList.contains('edit-btn')) editBook(id);
+                if (e.target.classList.contains('delete-btn')) deleteBook(id);
+                if (e.target.classList.contains('progress-btn')) updateProgress(id);
+            });
+            
+            // --- CRUD操作 ---
+            const editBook = (id) => {
+                const book = books.find(b => b.id === id);
+                if (!book) return;
+
+                resetForm();
+                formTitle.textContent = '本を編集';
+                formSubmitBtn.textContent = '本を更新';
+
+                bookIdInput.value = book.id;
+                document.getElementById('title').value = book.title;
+                document.getElementById('author').value = book.author;
+                document.getElementById('totalPages').value = book.totalPages || '';
+                document.getElementById('currentPage').value = book.currentPage || 0;
+                document.getElementById('status').value = book.status;
+                document.getElementById('startDate').value = book.startDate || '';
+                document.getElementById('endDate').value = book.endDate || '';
+                document.getElementById('notes').value = book.notes || '';
+                
+                currentTags = book.tags ? [...book.tags] : [];
+                updateTagDisplay();
+
+                imagePreview.innerHTML = book.coverImage ? `<img src="${book.coverImage}" alt="Preview">` : 'プレビュー';
+                
+                showTab('add');
+            };
+
+            const deleteBook = (id) => {
+                if (!confirm('本当にこの本を削除しますか？')) return;
+                books = books.filter(b => b.id !== id);
+                saveBooks();
+                updateAllDisplays();
+            };
+            
+            const updateProgress = (id) => {
+                const book = books.find(b => b.id === id);
+                if (!book) return;
+                
+                const newPage = prompt(`現在のページを入力してください (総ページ数: ${book.totalPages || '未設定'})`, book.currentPage);
+                if (newPage === null || isNaN(newPage) || newPage < 0) return;
+                
+                book.currentPage = book.totalPages > 0 ? Math.min(parseInt(newPage), book.totalPages) : parseInt(newPage);
+                
+                if(book.totalPages > 0 && book.currentPage >= book.totalPages) {
+                    book.status = 'completed';
+                    if(!book.endDate) book.endDate = new Date().toISOString().split('T')[0];
+                }
+
+                saveBooks();
+                updateAllDisplays();
+            };
+
+            // --- フォーム処理 ---
+            bookForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const id = Number(bookIdInput.value);
+                let coverImageData = null;
+                if (coverImageInput.files[0]) {
+                    coverImageData = await toBase64(coverImageInput.files[0]);
+                } else if (id) {
+                    const existingBook = books.find(b => b.id === id);
+                    coverImageData = existingBook ? existingBook.coverImage : null;
+                }
+
+                const bookData = {
+                    title: document.getElementById('title').value,
+                    author: document.getElementById('author').value,
+                    totalPages: Number(document.getElementById('totalPages').value) || 0,
+                    currentPage: Number(document.getElementById('currentPage').value) || 0,
+                    status: document.getElementById('status').value,
+                    startDate: document.getElementById('startDate').value,
+                    endDate: document.getElementById('endDate').value,
+                    notes: document.getElementById('notes').value,
+                    tags: [...currentTags],
+                    coverImage: coverImageData
+                };
+
+                if (id) {
+                    const bookIndex = books.findIndex(b => b.id === id);
+                    if (bookIndex !== -1) {
+                         books[bookIndex] = { ...books[bookIndex], ...bookData };
+                    }
+                } else {
+                    bookData.id = Date.now();
+                    bookData.dateAdded = new Date().toISOString();
+                    books.push(bookData);
+                }
+
+                saveBooks();
+                resetForm();
+                updateAllDisplays();
+                showTab('list');
+            });
+
+            function resetForm() {
+                bookForm.reset();
+                bookIdInput.value = '';
+                formTitle.textContent = '新しい本を追加';
+                formSubmitBtn.textContent = '本を追加';
+                currentTags = [];
+                updateTagDisplay();
+                imagePreview.innerHTML = 'プレビュー';
+            }
+
+            // --- タグ機能 ---
+            function addTag() {
+                const tag = tagInput.value.trim();
+                if (tag && !currentTags.includes(tag)) {
+                    currentTags.push(tag);
+                    updateTagDisplay();
+                }
+                tagInput.value = '';
+            }
+
+            function removeTag(tagToRemove) {
+                currentTags = currentTags.filter(tag => tag !== tagToRemove);
+                updateTagDisplay();
+            }
+
+            function updateTagDisplay() {
+                tagList.innerHTML = currentTags.map(tag => `
+                    <div class="tag-item">
+                        ${tag}
+                        <button type="button" class="tag-remove" data-tag="${tag}">×</button>
+                    </div>
+                `).join('');
+            }
+
+            addTagBtn.addEventListener('click', addTag);
+            tagInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag();
+                }
+            });
+            tagList.addEventListener('click', (e) => {
+                if (e.target.classList.contains('tag-remove')) {
+                    removeTag(e.target.dataset.tag);
+                }
+            });
+            
+            // --- 画像プレビュー & Base64エンコーダー ---
+            coverImageInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    toBase64(e.target.files[0]).then(dataUrl => {
+                         imagePreview.innerHTML = `<img src="${dataUrl}" alt="Preview">`;
+                    });
+                }
+            });
+
+            const toBase64 = file => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+
+            // --- フィルタ・ソートのイベントリスナー ---
+            statusFilter.addEventListener('change', displayBooks);
+            sortBy.addEventListener('change', displayBooks);
+            
+            // --- 初期化 ---
+            loadBooks();
+            updateAllDisplays();
+            showTab('dashboard');
+        });
+    </script>
+</body>
+</html>
