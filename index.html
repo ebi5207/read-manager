@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>読書管理アプリ</title>
     <style>
-        /* CSSは変更ありませんが、見やすさのために折りたたんでいます */
+        /* CSS部分は変更ありません */
         * {
             margin: 0;
             padding: 0;
@@ -19,7 +19,7 @@
             -webkit-overflow-scrolling: touch;
         }
         .container {
-            max-width: 800px; /* PC表示時の最大幅を設定 */
+            max-width: 800px;
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.95);
             min-height: 100vh;
@@ -45,7 +45,7 @@
             background: white;
             border-bottom: 1px solid #e2e8f0;
             position: sticky;
-            top: 69px; /* ヘッダーの高さに合わせて調整 */
+            top: 69px;
             z-index: 99;
         }
         .tab {
@@ -197,7 +197,7 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>読書管理</h1>
+            <h1>📚 読書管理</h1>
         </header>
         
         <div class="tabs">
@@ -365,12 +365,10 @@
                 if (storedBooks) {
                     books = JSON.parse(storedBooks);
                 } else {
-                    books = [{
-                        id: 1, title: "サンプル: 走れメロス", author: "太宰治", totalPages: 50, currentPage: 25, status: "reading",
-                        startDate: "2025-01-01", endDate: null, tags: ["小説", "友情"], notes: "感動的な物語。",
-                        coverImage: null, dateAdded: new Date('2025-01-15T12:00:00Z').toISOString()
-                    }];
-                    saveBooks();
+                    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
+                    // サンプルデータを削除し、空の配列で初期化するように変更
+                    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
+                    books = []; 
                 }
             }
             
@@ -387,8 +385,7 @@
                 } else if (tabName === 'dashboard') {
                     updateAllDisplays();
                 } else if (tabName === 'add') {
-                     // フォームが「追加」モードのときだけリセットする
-                    if (formTitle.textContent.includes('新しい本')) {
+                     if (formTitle.textContent.includes('新しい本')) {
                         resetForm();
                     }
                 }
@@ -479,7 +476,7 @@
                 const tagsHtml = book.tags && book.tags.length > 0
                     ? `<div class="tags">${book.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : '';
                 
-                const coverHtml = book.coverImage ? `<img src="${book.coverImage}" alt="${book.title}">` : '??';
+                const coverHtml = book.coverImage ? `<img src="${book.coverImage}" alt="${book.title}">` : '📖';
                 
                 const notesHtml = book.notes ? book.notes.replace(/\n/g, '<br>') : '';
                 
@@ -509,7 +506,7 @@
                 `;
             }
             
-            // --- イベントリスナー (概要と一覧タブのカード操作をここで一括処理) ---
+            // --- イベントリスナー ---
             mainElement.addEventListener('click', e => {
                 const card = e.target.closest('.book-card');
                 if (!card) return;
